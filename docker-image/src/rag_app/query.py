@@ -1,8 +1,8 @@
 import argparse
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.llms.ollama import Ollama
+from langchain_ollama import OllamaLLM
 from dataclasses import dataclass
-from utils import get_chroma_db
+from rag_app.utils import get_chroma_db
 
 
 PROMPT_TEMPLATE = """
@@ -39,7 +39,7 @@ def query_rag(query_text: str):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
 
-    model = Ollama(model="mistral")
+    model = OllamaLLM(model="mistral")
     response_text = model.invoke(prompt)
 
     sources = [doc.metadata.get("id", None) for doc, _score in results]

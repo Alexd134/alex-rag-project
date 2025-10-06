@@ -9,3 +9,5 @@ mangum
 uvicorn
 langchain-aws
 langchain-community
+langchain-chroma
+langchain-ollama

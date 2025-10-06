@@ -3,13 +3,13 @@ import os
 import shutil
 from langchain_community.document_loaders.pdf import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.schema.document import Document
-from utils import get_embedding_function
-from langchain_community.vectorstores.chroma import Chroma
+from langchain_core.documents import Document
+from rag_app.utils import get_embedding_function
+from langchain_chroma import Chroma
 
 
-DATA_PATH = "data"
-DATABASE_PATH = "chroma"
+DATA_PATH = "docker-image/src/data/source"
+DATABASE_PATH = "docker-image/src/data/chroma"
 
 def main():
     # Check if the database should be cleared (using the --reset flag).
@@ -37,7 +37,7 @@ def chunk_documents(documents: list[Document]):
         chunk_size=800,
         chunk_overlap=80,
         length_function=len,
-        is_separator_regex="ln"
+        is_separator_regex=False
     )
     return text_splitter.split_documents(documents)
 
@@ -66,13 +66,12 @@ def add_to_database(chunks: list[Document]):
         print(f"Adding new documents: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
         db.add_documents(new_chunks, ids=new_chunk_ids)
-        db.persist()
     else:
         print("No new documents to add")
 
 
 def calculate_chunk_ids(chunks):
-    '''
+    ''' 
     Create IDs in form 
     Page Source : Page Number : Chunk Index
 
@@ -107,7 +106,7 @@ def calculate_chunk_ids(chunks):
 
 def clear_database():
     if os.path.exists(DATABASE_PATH):
-        shutil.rmtree(DATABASE_PATH())
+        shutil.rmtree(DATABASE_PATH)
 
 
 if __name__ == "__main__":

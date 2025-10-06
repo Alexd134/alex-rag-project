@@ -1,0 +1,33 @@
+[project]
+name = "alex-rag-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.40.45",
+    "chromadb>=1.1.1",
+    "fastapi>=0.118.0",
+    "langchain>=0.3.27",
+    "langchain-aws>=0.2.35",
+    "langchain-chroma>=0.2.6",
+    "langchain-community>=0.3.30",
+    "langchain-ollama>=0.3.10",
+    "mangum>=0.19.0",
+    "pypdf>=6.1.1",
+    "pytest>=8.4.2",
+    "uvicorn>=0.37.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["docker-image/src/rag_app"]
+
+[project.scripts]
+add_to_database = "rag_app.add_to_database:main"
+query = "rag_app.query:main"
+test_query = "rag_app.test_query:main"
+run_api = "api_handler:main"

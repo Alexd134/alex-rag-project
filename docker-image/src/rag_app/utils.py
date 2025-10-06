@@ -1,9 +1,8 @@
-from langchain_community.embeddings.bedrock import BedrockEmbeddings
-from langchain_community.embeddings.ollama import OllamaEmbeddings
-from langchain_community.vectorstores import Chroma
-from rag_app.get_embedding_function import get_embedding_function
+from langchain_aws.embeddings.bedrock import BedrockEmbeddings
+from langchain_ollama import OllamaEmbeddings
+from langchain_chroma import Chroma
 
-CHROMA_PATH = "data/chroma"
+CHROMA_PATH = "docker-image/src/data/chroma"
 CHROMA_DB_INSTANCE = None  # Reference to singleton instance of ChromaDB
 
 
