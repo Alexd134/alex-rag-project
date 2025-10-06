@@ -1,11 +1,9 @@
 import argparse
-from langchain.vectorstores.chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
+from dataclasses import dataclass
+from utils import get_chroma_db
 
-from utils import get_embedding_function
-
-DATABASE_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
@@ -17,6 +15,13 @@ Answer the question based only on the following context:
 Answer the question based on the above context: {question}
 """
 
+
+@dataclass
+class QueryResponse:
+    query_text: str
+    response_text: str
+    sources: list[str]
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("query_text", type=str, help="The query text.")
@@ -25,8 +30,7 @@ def main():
     query_rag(query_text)
 
 def query_rag(query_text: str):
-    embedding_function = get_embedding_function()
-    db = Chroma(persist_directory=DATABASE_PATH, embedding_function=embedding_function)
+    db = get_chroma_db()
 
     # k is the number of top relevant chunks to return
     results = db.similarity_search_with_score(query_text, k=5)
@@ -41,7 +45,12 @@ def query_rag(query_text: str):
     sources = [doc.metadata.get("id", None) for doc, _score in results]
     formatted_response = f"Response: {response_text}\nSources: {sources}"
     print(formatted_response)
-    return response_text
+
+    return QueryResponse(
+        query_text=query_text,
+        response_text=response_text,
+        sources=sources
+    )
 
 
 if __name__ == "__main__":
