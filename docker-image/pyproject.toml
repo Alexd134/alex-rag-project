@@ -24,10 +24,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["docker-image/src/rag_app"]
+packages = ["src/rag_app"]
 
 [project.scripts]
 add_to_database = "rag_app.add_to_database:main"
 query = "rag_app.query:main"
 test_query = "rag_app.test_query:main"
-run_api = "api_handler:main"
+run_api = "rag_app.api_handler:main"

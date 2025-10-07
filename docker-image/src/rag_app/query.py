@@ -1,6 +1,7 @@
 import argparse
 from langchain.prompts import ChatPromptTemplate
 from langchain_ollama import OllamaLLM
+from langchain_aws import ChatBedrock
 from dataclasses import dataclass
 from rag_app.utils import get_chroma_db
 
@@ -39,7 +40,8 @@ def query_rag(query_text: str):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
 
-    model = OllamaLLM(model="mistral")
+    # model = OllamaLLM(model="mistral")
+    model = ChatBedrock(model_id="anthropic.claude-3-haiku-20240307-v1:0")
     response_text = model.invoke(prompt)
 
     sources = [doc.metadata.get("id", None) for doc, _score in results]

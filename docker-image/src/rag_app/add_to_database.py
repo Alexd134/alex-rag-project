@@ -8,8 +8,8 @@ from rag_app.utils import get_embedding_function
 from langchain_chroma import Chroma
 
 
-DATA_PATH = "docker-image/src/data/source"
-DATABASE_PATH = "docker-image/src/data/chroma"
+DATA_PATH = "src/data/source"
+DATABASE_PATH = "src/data/chroma"
 
 def main():
     # Check if the database should be cleared (using the --reset flag).
@@ -47,6 +47,8 @@ def add_to_database(chunks: list[Document]):
         persist_directory=DATABASE_PATH,
         embedding_function=get_embedding_function()
     )
+
+    print(get_embedding_function())
 
     # Only add documents that don't exist in the DB.
     # update to store the hash of the content in the metadata as well, then we can see if the content has changed
