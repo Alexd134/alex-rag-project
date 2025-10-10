@@ -35,6 +35,13 @@ def query_rag(query_text: str):
 
     # k is the number of top relevant chunks to return
     results = db.similarity_search_with_score(query_text, k=5)
+    # TODO could try using something more advanced like RetrievalQA 
+    # or use a retriever to get larger chunks after a match and give more context
+    # retriever = db.as_retriever(search_type="mmr")
+    # results = retriever.invoke(query)
+    # add a score threshold and then return a generic message if no good matches
+
+    
 
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
@@ -53,6 +60,15 @@ def query_rag(query_text: str):
         response_text=response_text,
         sources=sources
     )
+
+# TODO add conversational memory:
+# memory = ConversationBufferMemory(memory_key = "chat_history", return_message = True)
+#     qa = ConversationalRetrievalChain.from_llm(llm=llama_3_llm, 
+#                                                chain_type="stuff", 
+#                                                retriever=docsearch.as_retriever(), 
+#                                                memory = memory, 
+#                                                get_chat_history=lambda h : h, 
+#                                                return_source_documents=False)
 
 
 if __name__ == "__main__":
