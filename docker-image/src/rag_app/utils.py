@@ -17,19 +17,20 @@ IS_USING_IMAGE_RUNTIME = bool(os.environ.get("IS_USING_IMAGE_RUNTIME", False))
 
 def get_embedding_function():
     """Get embedding function using AWS Bedrock with configured credentials"""
+    region = os.environ.get("AWS_DEFAULT_REGION", "eu-west-2")
+
     try:
         embeddings = BedrockEmbeddings(
-            credentials_profile_name="default",
             model_id="cohere.embed-english-v3",
-            region_name=None  # Will use default region from AWS config
+            region_name=region
         )
         # Test the connection
         embeddings.embed_query("test")
-        print("✅ Successfully connected to AWS Bedrock embeddings")
+        print("Successfully connected to AWS Bedrock embeddings")
         return embeddings
     except Exception as e:
-        print(f"❌ AWS Bedrock embeddings error: {str(e)}")
-        print("ℹ️  Check that:")
+        print(f"AWS Bedrock embeddings error: {str(e)}")
+        print("Check:")
         print("   1. Your AWS credentials are valid")
         print("   2. Your configured region has access to Bedrock")
         print("   3. Your AWS account has Bedrock enabled")
@@ -52,7 +53,7 @@ def get_chroma_db():
             embedding_function=get_embedding_function(),
         )
 
-        print(f"✅ Init ChromaDB {CHROMA_DB_INSTANCE} from {get_runtime_chroma_path()}")
+        print(f"Init ChromaDB {CHROMA_DB_INSTANCE} from {get_runtime_chroma_path()}")
 
     return CHROMA_DB_INSTANCE
 
