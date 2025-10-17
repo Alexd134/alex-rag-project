@@ -48,7 +48,8 @@ def query_rag(query_text: str):
     prompt = prompt_template.format(context=context_text, question=query_text)
 
     # model = OllamaLLM(model="mistral")
-    model = ChatBedrock(model_id="anthropic.claude-3-haiku-20240307-v1:0")
+    # model = ChatBedrock(model_id="anthropic.claude-3-haiku-20240307-v1:0")
+    model = ChatBedrock(model_id="amazon.titan-text-lite-v1")
     response_text = model.invoke(prompt)
 
     sources = [doc.metadata.get("id", None) for doc, _score in results]
