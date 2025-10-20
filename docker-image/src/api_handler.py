@@ -6,6 +6,12 @@ from mangum import Mangum
 from pydantic import BaseModel
 from rag_app.query import query_rag
 from rag_app.query_response_model import QueryResponseModel
+import os
+import json
+import time
+from uuid import uuid4
+import boto3
+from typing import Dict, Any
 
 
 app = FastAPI()
@@ -20,6 +26,10 @@ app.add_middleware(
 )
 
 handler = Mangum(app)  # Entry point for AWS Lambda.
+
+WORKER_LAMBDA_NAME = os.environ.get("WORKER_LAMBDA_NAME")
+JOBS_QUEUE_URL = os.environ.get("JOBS_QUEUE_URL")
+_sqs = boto3.client("sqs") if JOBS_QUEUE_URL else None
 
 
 class SubmitQueryRequest(BaseModel):
@@ -383,10 +393,37 @@ def get_query_endpoint(query_id: str) -> QueryResponseModel:
     return query
 
 @app.post("/submit_query")
-def submit_query_endpoint(request: SubmitQueryRequest) -> QueryResponseModel:
-    query_response = query_rag(request.query_text)
-    query_response.put_item()
-    return query_response
+def submit_query_endpoint(request: SubmitQueryRequest) -> Dict[str, Any]:
+     # Create the query item, and put it into the data-base.
+    new_query = QueryResponseModel(query_text=request.query_text, status="PENDING")
+    new_query.put_item()
+
+    # Prefer SQS: send an async job to the queue
+    if JOBS_QUEUE_URL and _sqs:
+        job = {
+            "query_id": new_query.query_id,
+            "query_text": new_query.query_text,
+            "submitted_at": int(time.time()),
+        }
+        _sqs.send_message(
+            QueueUrl=JOBS_QUEUE_URL,
+            MessageBody=json.dumps(job),
+        )
+        return {"query_id": new_query.query_id}
+    
+    # Else: fall back to synchronous compute (useful for local/dev)
+    try:
+        rag = query_rag(new_query.query_text)
+        new_query.response_text = rag.response_text
+        new_query.sources = rag.sources
+        new_query.status = "SUCCEEDED"
+        new_query.put_item()
+        return {"query_id": new_query.query_id, "status": "SUCCEEDED",
+                "response_text": rag.response_text, "sources": rag.sources}
+    except Exception as e:
+        new_query.status = "FAILED"
+        new_query.put_item()    
+        raise
 
 
 if __name__ == "__main__":

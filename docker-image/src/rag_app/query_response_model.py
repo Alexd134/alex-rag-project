@@ -3,7 +3,7 @@ import time
 import uuid
 import boto3
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 from botocore.exceptions import ClientError
 
 TABLE_NAME = os.environ.get("TABLE_NAME")
@@ -12,9 +12,9 @@ class QueryResponseModel(BaseModel):
     query_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     create_time: int = Field(default_factory=lambda: int(time.time()))
     query_text: str
-    answer_text: Optional[str] = None
+    response_text: Optional[str] = None
     sources: List[str] = Field(default_factory=list)
-    is_complete: bool = False
+    status: Literal["PENDING", "SUCCEEDED", "FAILED"] = "PENDING"
 
     @classmethod
     def get_table(cls: "QueryResponseModel") -> boto3.resource:
