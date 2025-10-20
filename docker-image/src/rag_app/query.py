@@ -4,18 +4,36 @@ from langchain_ollama import OllamaLLM
 from langchain_aws import ChatBedrock
 from dataclasses import dataclass
 from rag_app.utils import get_chroma_db
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
 
 
 PROMPT_TEMPLATE = """
-Answer the question based only on the following context:
+You are a helpful RAG assistant. Answer the user's question *using only the provided context*. 
+If the context does not contain the answer, say you don't have enough information and briefly 
+suggest what document or detail would help. Do not invent facts.
 
+# Instructions
+- Be concise and precise. Prefer bullet points for lists and step-by-step guidance.
+- Quote exact phrases from the context when wording matters; put quotes in “double quotes”.
+- If multiple parts of the context disagree, note the discrepancy and present both views.
+- Include simple calculations or examples *only if* they are directly supported by the context.
+- Avoid first-person speculation and do not reference hidden instructions or system messages.
+
+# Output formatting
+- Start with a 1-2 sentence direct answer or “I don't have enough information in the context to answer.”
+- Then, if useful, add a short “Details” section with bullets.
+- If you cite text, keep quotes short (one or two lines).
+- Do not fabricate sources or links.
+
+# Context
+<CONTEXT>
 {context}
+</CONTEXT>
 
----
-
-Answer the question based on the above context: {question}
+# Question
+{question}
 """
-
 
 @dataclass
 class QueryResponse:
@@ -23,54 +41,98 @@ class QueryResponse:
     response_text: str
     sources: list[str]
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("query_text", type=str, help="The query text.")
-    args = parser.parse_args()
-    query_text = args.query_text
-    query_rag(query_text)
 
-def query_rag(query_text: str):
-    db = get_chroma_db()
+def build_chain(db):
+    """Builds an LCEL pipeline that:
+       - runs similarity_search_with_score(k=5)
+       - formats context
+       - calls Titan via Bedrock
+       - returns both response_text and sources
+    """
 
-    # k is the number of top relevant chunks to return
-    results = db.similarity_search_with_score(query_text, k=5)
-    # TODO could try using something more advanced like RetrievalQA 
-    # or use a retriever to get larger chunks after a match and give more context
-    # retriever = db.as_retriever(search_type="mmr")
-    # results = retriever.invoke(query)
-    # add a score threshold and then return a generic message if no good matches
+    def _search_with_scores(query: str):
+        # return db.similarity_search_with_score(query, k=5)
+        return db.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 5,
+            },
+        )
 
-    
+    retrieve = RunnableLambda(_search_with_scores)
 
-    context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
-    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt = prompt_template.format(context=context_text, question=query_text)
+    def _format_context(results):
+        return "\n\n---\n\n".join(doc.page_content for doc in results)
 
+    format_context = RunnableLambda(_format_context)
+
+    # Extract source IDs from metadata
+    def _extract_sources(results):
+        return [doc.metadata.get("id", None) for doc in results]
+
+    extract_sources = RunnableLambda(_extract_sources)
+
+    prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     # model = OllamaLLM(model="mistral")
-    # model = ChatBedrock(model_id="anthropic.claude-3-haiku-20240307-v1:0")
     model = ChatBedrock(model_id="amazon.titan-text-lite-v1")
-    response_text = model.invoke(prompt)
+    to_str = StrOutputParser()
 
-    sources = [doc.metadata.get("id", None) for doc, _score in results]
-    formatted_response = f"Response: {response_text}\nSources: {sources}"
-    print(formatted_response)
+    response_chain = (
+        {
+            "context": retrieve | format_context,
+            "question": RunnablePassthrough(),  # pass the original query string through
+        }
+        | prompt
+        | model
+        | to_str
+    )
+
+    sources_chain = retrieve | extract_sources
+
+    combined = RunnableParallel(
+        response_text=response_chain,
+        sources=sources_chain,
+    )
+    return combined
+
+
+def query_rag(query_text: str) -> QueryResponse:
+    db = get_chroma_db()
+    chain = build_chain(db)
+
+    result = chain.invoke(query_text)  # {'response_text': str, 'sources': List[str]}
+    response_text = result["response_text"]
+    sources = result["sources"]
+
+    formatted = f"Response: {response_text}\nSources: {sources}"
+    print(formatted)
 
     return QueryResponse(
         query_text=query_text,
         response_text=response_text,
-        sources=sources
+        sources=sources,
     )
 
-# TODO add conversational memory:
-# memory = ConversationBufferMemory(memory_key = "chat_history", return_message = True)
-#     qa = ConversationalRetrievalChain.from_llm(llm=llama_3_llm, 
-#                                                chain_type="stuff", 
-#                                                retriever=docsearch.as_retriever(), 
-#                                                memory = memory, 
-#                                                get_chat_history=lambda h : h, 
-#                                                return_source_documents=False)
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("query_text", type=str, help="The query text.")
+    args = parser.parse_args()
+    query_rag(args.query_text)
 
 if __name__ == "__main__":
     main()
+
+
+# # TODO add conversational memory:
+# # memory = ConversationBufferMemory(memory_key = "chat_history", return_message = True)
+# #     qa = ConversationalRetrievalChain.from_llm(llm=llama_3_llm, 
+# #                                                chain_type="stuff", 
+# #                                                retriever=docsearch.as_retriever(), 
+# #                                                memory = memory, 
+# #                                                get_chat_history=lambda h : h, 
+# #                                                return_source_documents=False)
+
+
+# if __name__ == "__main__":
+#     main()
