@@ -2,10 +2,10 @@ import argparse
 from langchain.prompts import ChatPromptTemplate
 from langchain_ollama import OllamaLLM
 from langchain_aws import ChatBedrock
-from dataclasses import dataclass
 from rag_app.utils import get_chroma_db
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
+from rag_app.query_response_model import QueryResponseModel
 
 
 PROMPT_TEMPLATE = """
@@ -34,13 +34,6 @@ suggest what document or detail would help. Do not invent facts.
 # Question
 {question}
 """
-
-@dataclass
-class QueryResponse:
-    query_text: str
-    response_text: str
-    sources: list[str]
-
 
 def build_chain(db):
     """Builds an LCEL pipeline that:
@@ -95,7 +88,7 @@ def build_chain(db):
     return combined
 
 
-def query_rag(query_text: str) -> QueryResponse:
+def query_rag(query_text: str) -> QueryResponseModel:
     db = get_chroma_db()
     chain = build_chain(db)
 
@@ -106,10 +99,11 @@ def query_rag(query_text: str) -> QueryResponse:
     formatted = f"Response: {response_text}\nSources: {sources}"
     print(formatted)
 
-    return QueryResponse(
+    return QueryResponseModel(
         query_text=query_text,
-        response_text=response_text,
+        answer_text=response_text,
         sources=sources,
+        is_complete=True,
     )
 
 
@@ -131,7 +125,3 @@ if __name__ == "__main__":
 # #                                                memory = memory, 
 # #                                                get_chat_history=lambda h : h, 
 # #                                                return_source_documents=False)
-
-
-# if __name__ == "__main__":
-#     main()

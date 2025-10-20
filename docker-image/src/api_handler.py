@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from mangum import Mangum
 from pydantic import BaseModel
-from rag_app.query import query_rag, QueryResponse
+from rag_app.query import query_rag
+from rag_app.query_response_model import QueryResponseModel
 
 
 app = FastAPI()
@@ -376,10 +377,15 @@ def index():
 </html>
 """
 
+@app.get("/get_query")
+def get_query_endpoint(query_id: str) -> QueryResponseModel:
+    query = QueryResponseModel.get_item(query_id)
+    return query
 
 @app.post("/submit_query")
-def submit_query_endpoint(request: SubmitQueryRequest) -> QueryResponse:
+def submit_query_endpoint(request: SubmitQueryRequest) -> QueryResponseModel:
     query_response = query_rag(request.query_text)
+    query_response.put_item()
     return query_response
 
 

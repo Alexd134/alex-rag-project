@@ -3,9 +3,12 @@ Start by uploading pdfs into the chroma db - this is done by:
 - cd into docker-images 
 - run 'uv run add_to_database'
 
-Query locally using 'uv query {query_text}'
+Query locally using 'uv run query {query_text}'
 
-or 'cdk deploy' and then query from the /docs fast api interface
+or to deploy to aws lambda:
+- 'docker build -t aws_rag_app .'
+- 'cdk deploy'  
+- query from the /docs fast api interface
 
 
 TODO add conversational memory
