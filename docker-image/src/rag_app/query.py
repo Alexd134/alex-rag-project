@@ -51,7 +51,6 @@ def build_chain(db):
     """
 
     def _search_with_scores(query: str):
-        # return db.similarity_search_with_score(query, k=5)
         return db.as_retriever(
             search_type="mmr",
             search_kwargs={

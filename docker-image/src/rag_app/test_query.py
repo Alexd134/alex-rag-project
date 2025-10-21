@@ -1,4 +1,5 @@
-from langchain_ollama import Ollama
+from langchain_aws import ChatBedrock
+from query import query_rag
 
 EVAL_PROMPT = """
 Expected Response: {expected_response}
@@ -8,19 +9,11 @@ Actual Response: {actual_response}
 """
 
 
-def test_monopoly_rules():
+def test_query_for_numbers():
     assert query_and_validate(
-        question="How much total money does a player start with in Monopoly? (Answer with the number only)",
-        expected_response="$1500",
+        question="What is the measuring range of the outside temperature display?",
+        expected_response="The measuring range lies between -40℃ (-40°F) and +50 ℃ (+122°F).",
     )
-
-
-def test_ticket_to_ride_rules():
-    assert query_and_validate(
-        question="How many points does the longest continuous train get in Ticket to Ride? (Answer with the number only)",
-        expected_response="10 points",
-    )
-
 
 def query_and_validate(question: str, expected_response: str):
     response_text = query_rag(question)
@@ -28,7 +21,7 @@ def query_and_validate(question: str, expected_response: str):
         expected_response=expected_response, actual_response=response_text
     )
 
-    model = Ollama(model="mistral")
+    model = ChatBedrock(model_id="amazon.titan-text-lite-v1")
     evaluation_results_str = model.invoke(prompt)
     evaluation_results_str_cleaned = evaluation_results_str.strip().lower()
 

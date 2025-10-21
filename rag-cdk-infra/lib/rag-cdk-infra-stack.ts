@@ -18,7 +18,11 @@ export class RagCdkInfraStack extends cdk.Stack {
       code: apiImageCode,
       memorySize: 256,
       timeout: cdk.Duration.seconds(29),
-      architecture: Architecture.X86_64
+      architecture: Architecture.X86_64,
+      environment: {
+        IS_USING_IMAGE_RUNTIME: "1",  // Enable copying ChromaDB to /tmp
+        CHROMA_PATH: "src/data/chroma"  // Source path in Docker image
+      }
     });
 
     const functionUrl = apiFunction.addFunctionUrl({

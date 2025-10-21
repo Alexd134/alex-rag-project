@@ -9,12 +9,6 @@ CHROMA_DB_INSTANCE = None  # Reference to singleton instance of ChromaDB
 CHROMA_PATH = os.environ.get("CHROMA_PATH", "src/data/chroma")
 IS_USING_IMAGE_RUNTIME = bool(os.environ.get("IS_USING_IMAGE_RUNTIME", False))
 
-
-# def get_embedding_function():
-#     embeddings = BedrockEmbeddings(credentials_profile_name="default")
-#     # embeddings = OllamaEmbeddings(model="nomic-embed-text")
-#     return embeddings
-
 def get_embedding_function():
     """Get embedding function using AWS Bedrock with configured credentials"""
     region = os.environ.get("AWS_DEFAULT_REGION", "eu-west-2")
@@ -40,20 +34,41 @@ def get_embedding_function():
 def get_chroma_db():
     global CHROMA_DB_INSTANCE
     if not CHROMA_DB_INSTANCE:
-        # Hack needed for AWS Lambda's base Python image (to work with an updated version of SQLite).
-        # In Lambda runtime, we need to copy ChromaDB to /tmp so it can have write permissions.
+        print("[DEBUG] get_chroma_db() starting")
+        print(f"[DEBUG] CHROMA_PATH (env): {CHROMA_PATH}")
+        print(f"[DEBUG] IS_USING_IMAGE_RUNTIME: {IS_USING_IMAGE_RUNTIME}")
         if IS_USING_IMAGE_RUNTIME:
-            # __import__("pysqlite3")
-            # sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
             copy_chroma_to_tmp()
+
+        # Debug source listing
+        try:
+            src_exists = os.path.exists(CHROMA_PATH)
+            print(f"[DEBUG] source CHROMA_PATH exists: {src_exists} -> {CHROMA_PATH}")
+            if src_exists:
+                print("[DEBUG] source listing:", os.listdir(CHROMA_PATH)[:20])
+        except Exception as _e:
+            print(f"[DEBUG] error listing source CHROMA_PATH: {_e}")
+
+        runtime_path = get_runtime_chroma_path()
+        try:
+            print(f"[DEBUG] runtime chroma path: {runtime_path}")
+            print("[DEBUG] runtime listing:", os.listdir(runtime_path)[:20])
+        except Exception as _e:
+            print(f"[DEBUG] error listing runtime path: {_e}")
 
         # Prepare the DB.
         CHROMA_DB_INSTANCE = Chroma(
-            persist_directory=get_runtime_chroma_path(),
+            persist_directory=runtime_path,
             embedding_function=get_embedding_function(),
         )
 
-        print(f"Init ChromaDB {CHROMA_DB_INSTANCE} from {get_runtime_chroma_path()}")
+        print(f"Init ChromaDB {CHROMA_DB_INSTANCE} from {runtime_path}")
+        try:
+            items = CHROMA_DB_INSTANCE.get(include=[])
+            ids = items.get("ids", [])
+            print(f"[DEBUG] loaded ids count: {len(ids)}")
+        except Exception as e:
+            print(f"[DEBUG] error querying CHROMA DB on init: {e}")
 
     return CHROMA_DB_INSTANCE
 
