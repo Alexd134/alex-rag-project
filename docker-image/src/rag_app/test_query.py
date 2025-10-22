@@ -1,5 +1,9 @@
+import logging
 from langchain_aws import ChatBedrock
 from query import query_rag
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 EVAL_PROMPT = """
 Expected Response: {expected_response}
@@ -25,15 +29,15 @@ def query_and_validate(question: str, expected_response: str):
     evaluation_results_str = model.invoke(prompt)
     evaluation_results_str_cleaned = evaluation_results_str.strip().lower()
 
-    print(prompt)
+    logger.debug(prompt)
 
     if "true" in evaluation_results_str_cleaned:
-        # Print response in Green if it is correct.
-        print("\033[92m" + f"Response: {evaluation_results_str_cleaned}" + "\033[0m")
+        # Log response if it is correct.
+        logger.info(f"✓ Response validated: {evaluation_results_str_cleaned}")
         return True
     elif "false" in evaluation_results_str_cleaned:
-        # Print response in Red if it is incorrect.
-        print("\033[91m" + f"Response: {evaluation_results_str_cleaned}" + "\033[0m")
+        # Log response if it is incorrect.
+        logger.warning(f"✗ Response validation failed: {evaluation_results_str_cleaned}")
         return False
     else:
         raise ValueError(
