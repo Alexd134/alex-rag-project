@@ -1,4 +1,5 @@
 import argparse
+import logging
 from langchain.prompts import ChatPromptTemplate
 from langchain_ollama import OllamaLLM
 from langchain_aws import ChatBedrock
@@ -6,6 +7,9 @@ from dataclasses import dataclass
 from rag_app.utils import get_chroma_db
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 PROMPT_TEMPLATE = """
@@ -103,8 +107,8 @@ def query_rag(query_text: str) -> QueryResponse:
     response_text = result["response_text"]
     sources = result["sources"]
 
-    formatted = f"Response: {response_text}\nSources: {sources}"
-    print(formatted)
+    logger.info(f"Query processed successfully: {len(response_text)} chars, {len(sources)} sources")
+    logger.debug(f"Response: {response_text}\nSources: {sources}")
 
     return QueryResponse(
         query_text=query_text,

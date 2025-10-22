@@ -21,7 +21,10 @@ export class RagCdkInfraStack extends cdk.Stack {
       architecture: Architecture.X86_64,
       environment: {
         IS_USING_IMAGE_RUNTIME: "1",  // Enable copying ChromaDB to /tmp
-        CHROMA_PATH: "src/data/chroma"  // Source path in Docker image
+        CHROMA_PATH: "src/data/chroma",  // Source path in Docker image
+        // CORS: Allow all origins by default (set to specific domains in production)
+        // Example: ALLOWED_ORIGINS: "https://myapp.com,https://www.myapp.com"
+        ALLOWED_ORIGINS: "*"  // Change to specific domains for production
       }
     });
 

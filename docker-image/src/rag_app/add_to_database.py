@@ -1,11 +1,15 @@
 import argparse
 import os
 import shutil
+import logging
 from langchain_community.document_loaders.pdf import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from rag_app.utils import get_embedding_function
 from langchain_chroma import Chroma
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 DATA_PATH = "src/data/source"
@@ -17,7 +21,7 @@ def main():
     parser.add_argument("--reset", action="store_true", help="Reset the database.")
     args = parser.parse_args()
     if args.reset:
-        print("Clearing Database")
+        logger.info("Clearing Database")
         clear_database()
 
     documents = load_documents()
@@ -48,7 +52,7 @@ def add_to_database(chunks: list[Document]):
         embedding_function=get_embedding_function()
     )
 
-    print(get_embedding_function())
+    logger.debug(f"Using embedding function: {get_embedding_function()}")
 
     # Only add documents that don't exist in the DB.
     # update to store the hash of the content in the metadata as well, then we can see if the content has changed
@@ -57,7 +61,7 @@ def add_to_database(chunks: list[Document]):
 
     existing_items = db.get(include=[])  # IDs are always included by default
     existing_ids = set(existing_items["ids"])
-    print(f"Number of existing documents in DB: {len(existing_ids)}")
+    logger.info(f"Number of existing documents in DB: {len(existing_ids)}")
 
     new_chunks = []
     for chunk in chunks_with_ids:
@@ -65,11 +69,11 @@ def add_to_database(chunks: list[Document]):
             new_chunks.append(chunk)
 
     if len(new_chunks):
-        print(f"Adding new documents: {len(new_chunks)}")
+        logger.info(f"Adding new documents: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
         db.add_documents(new_chunks, ids=new_chunk_ids)
     else:
-        print("No new documents to add")
+        logger.info("No new documents to add")
 
 
 def calculate_chunk_ids(chunks):

@@ -1,28 +1,83 @@
 import uvicorn
-from fastapi import FastAPI
+import re
+import os
+import logging
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from mangum import Mangum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from rag_app.query import query_rag, QueryResponse
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 app = FastAPI()
 
-# Add CORS middleware to allow frontend to call this API
+# Configure CORS - use environment variable for allowed origins
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False, 
+    allow_methods=["GET", "POST"], 
+    allow_headers=["Content-Type"],
 )
 
 handler = Mangum(app)  # Entry point for AWS Lambda.
 
 
 class SubmitQueryRequest(BaseModel):
-    query_text: str
+    """Request model for submitting a query to the RAG system.
+
+    Validates that queries are:
+    - Non-empty
+    - Within reasonable length limits
+    - Contain safe characters only
+    """
+    query_text: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="The question to ask the RAG system",
+        examples=["What is the maximum speed?", "How can I move the seat forwards?"]
+    )
+
+    @field_validator('query_text')
+    @classmethod
+    def validate_query_text(cls, v: str) -> str:
+        """Validate and sanitize query text.
+
+        Args:
+            v: The query text to validate
+
+        Returns:
+            Cleaned and validated query text
+
+        Raises:
+            ValueError: If query contains invalid characters or patterns
+        """
+        v = v.strip()
+
+        # Check if empty after stripping
+        if not v:
+            raise ValueError("Query cannot be empty or only whitespace")
+
+        # Very basic defense against prompt injection, trying to stop things like using {system} tags
+        allowed_pattern = r'^[a-zA-Z0-9\s\?.!,;:\'\"\-\(\)\/]+$'
+        if not re.match(allowed_pattern, v):
+            raise ValueError(
+                "Query contains invalid characters. "
+                "Only letters, numbers, spaces, and basic punctuation are allowed."
+            )
+
+        return v
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -377,14 +432,39 @@ def index():
 """
 
 
-@app.post("/submit_query")
-def submit_query_endpoint(request: SubmitQueryRequest) -> QueryResponse:
-    query_response = query_rag(request.query_text)
-    return query_response
+@app.post("/submit_query", response_model=QueryResponse)
+async def submit_query_endpoint(request: SubmitQueryRequest) -> QueryResponse:
+    """Submit a query to the RAG system.
 
+    Args:
+        request: The query request containing the query text
+
+    Returns:
+        QueryResponse with the answer and source citations
+
+    Raises:
+        HTTPException: 400 for validation errors, 500 for server errors
+    """
+    try:
+        query_response = query_rag(request.query_text)
+        return query_response
+
+    except ValueError as e:
+        # Invalid input (though this should be caught by Pydantic)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid query: {str(e)}"
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing query: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred processing your query. Please try again."
+        )
 
 if __name__ == "__main__":
     # Run this as a server directly.
     port = 8000
-    print(f"Running the FastAPI server on port {port}.")
+    logger.info(f"Starting FastAPI server on port {port}")
     uvicorn.run("api_handler:app", host="0.0.0.0", port=port)
