@@ -1,6 +1,6 @@
 import logging
 from langchain_aws import ChatBedrock
-from query import query_rag
+from rag_app.query import query_rag
 
 # Configure logging
 logger = logging.getLogger(__name__)

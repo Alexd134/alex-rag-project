@@ -127,15 +127,4 @@ if __name__ == "__main__":
     main()
 
 
-# # TODO add conversational memory:
-# # memory = ConversationBufferMemory(memory_key = "chat_history", return_message = True)
-# #     qa = ConversationalRetrievalChain.from_llm(llm=llama_3_llm, 
-# #                                                chain_type="stuff", 
-# #                                                retriever=docsearch.as_retriever(), 
-# #                                                memory = memory, 
-# #                                                get_chat_history=lambda h : h, 
-# #                                                return_source_documents=False)
-
-
-# if __name__ == "__main__":
-#     main()
+# # TODO add conversational memory

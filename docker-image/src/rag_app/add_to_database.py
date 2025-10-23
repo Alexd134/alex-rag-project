@@ -29,7 +29,7 @@ def main():
     add_to_database(chunks)
 
 
-# add other document types here
+# TODO add other document types here
 # https://python.langchain.com/docs/integrations/document_loaders/
 def load_documents():
     document_loader = PyPDFDirectoryLoader(DATA_PATH)

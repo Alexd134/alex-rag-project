@@ -28,10 +28,6 @@ def get_embedding_function():
         return embeddings
     except Exception as e:
         logger.error(f"AWS Bedrock embeddings error: {str(e)}")
-        logger.error("Check:")
-        logger.error("   1. Your AWS credentials are valid")
-        logger.error("   2. Your configured region has access to Bedrock")
-        logger.error("   3. Your AWS account has Bedrock enabled")
         raise e
 
 
@@ -44,21 +40,7 @@ def get_chroma_db():
         if IS_USING_IMAGE_RUNTIME:
             copy_chroma_to_tmp()
 
-        # Debug source listing
-        try:
-            src_exists = os.path.exists(CHROMA_PATH)
-            logger.debug(f"source CHROMA_PATH exists: {src_exists} -> {CHROMA_PATH}")
-            if src_exists:
-                logger.debug(f"source listing: {os.listdir(CHROMA_PATH)[:20]}")
-        except Exception as _e:
-            logger.debug(f"error listing source CHROMA_PATH: {_e}")
-
         runtime_path = get_runtime_chroma_path()
-        try:
-            logger.debug(f"runtime chroma path: {runtime_path}")
-            logger.debug(f"runtime listing: {os.listdir(runtime_path)[:20]}")
-        except Exception as _e:
-            logger.debug(f"error listing runtime path: {_e}")
 
         # Prepare the DB.
         CHROMA_DB_INSTANCE = Chroma(

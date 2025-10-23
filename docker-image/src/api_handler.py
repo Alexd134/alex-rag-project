@@ -81,6 +81,8 @@ class SubmitQueryRequest(BaseModel):
 
 
 @app.get("/", response_class=HTMLResponse)
+#Vibe coded frontend for ease 
+# TODO make an actual front end
 def index():
     """Serve the Gradio-style interface at the root path"""
     return """
@@ -435,27 +437,16 @@ def index():
 @app.post("/submit_query", response_model=QueryResponse)
 async def submit_query_endpoint(request: SubmitQueryRequest) -> QueryResponse:
     """Submit a query to the RAG system.
-
     Args:
-        request: The query request containing the query text
-
+    request: The formatted/validated query text
     Returns:
-        QueryResponse with the answer and source citations
-
-    Raises:
-        HTTPException: 400 for validation errors, 500 for server errors
+    QueryResponse with the answer and source citations
     """
     try:
         query_response = query_rag(request.query_text)
         return query_response
 
-    except ValueError as e:
-        # Invalid input (though this should be caught by Pydantic)
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid query: {str(e)}"
-        )
-
+    # Invalid input should be caught already by Pydantic
     except Exception as e:
         logger.error(f"Error processing query: {str(e)}", exc_info=True)
         raise HTTPException(
